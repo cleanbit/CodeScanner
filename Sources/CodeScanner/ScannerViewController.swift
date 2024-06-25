@@ -373,7 +373,8 @@ extension CodeScannerView {
         }
         #endif
         
-        func updateViewController(isTorchOn: Bool, isGalleryPresented: Bool, isManualCapture: Bool, isManualSelect: Bool) {
+        func updateViewController(isTorchOn: Bool, isGalleryPresented: Bool,
+                                  isManualCapture: Bool, isManualSelect: Bool, needsReset: Bool) {
             guard let videoCaptureDevice = parentView.videoCaptureDevice ?? fallbackVideoCaptureDevice else {
                 return
             }
@@ -387,7 +388,12 @@ extension CodeScannerView {
             if isGalleryPresented, !isGalleryShowing {
                 openGallery()
             }
-            
+
+            if needsReset {
+                 reset()
+                 parentView.needsReset.wrappedValue = false
+             }
+
             #if !targetEnvironment(simulator)
             showManualCaptureButton(isManualCapture)
             showManualSelectButton(isManualSelect)
