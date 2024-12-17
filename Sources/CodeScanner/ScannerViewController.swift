@@ -431,7 +431,9 @@ extension CodeScannerView {
         }
 
         func didFail(reason: ScanError) {
-            parentView.completion(.failure(reason))
+            DispatchQueue.main.async {
+                self.parentView.completion(.failure(reason))
+            }
         }
         
     }
@@ -454,7 +456,8 @@ extension CodeScannerView.ScannerViewController: AVCaptureMetadataOutputObjectsD
             return
         }
 
-        handler = { [self] image in
+        handler = { [weak self] image in
+            guard let self else { return }
             let result = ScanResult(string: stringValue, type: readableObject.type, image: image, corners: readableObject.corners)
 
             switch parentView.scanMode {
@@ -514,24 +517,27 @@ extension CodeScannerView.ScannerViewController: UIImagePickerControllerDelegate
             return
         }
 
-        var qrCodeLink = ""
-
         let features = detector.features(in: ciImage)
 
-        for feature in features as! [CIQRCodeFeature] {
-            qrCodeLink = feature.messageString!
-            if qrCodeLink.isEmpty {
+        guard !features.isEmpty else {
+            didFail(reason: .badOutput)
+            return
+        } 
+        for feature in features.compactMap({ $0 as? CIQRCodeFeature }) {
+            guard let qrCodeLink = feature.messageString, !qrCodeLink.isEmpty else {
                 didFail(reason: .badOutput)
-            } else {
-                let corners = [
-                    feature.bottomLeft,
-                    feature.bottomRight,
-                    feature.topRight,
-                    feature.topLeft
-                ]
-                let result = ScanResult(string: qrCodeLink, type: .qr, image: qrcodeImg, corners: corners)
-                found(result)
+                continue
             }
+
+            let corners = [
+                feature.bottomLeft,
+                feature.bottomRight,
+                feature.topRight,
+                feature.topLeft
+            ]
+
+            let result = ScanResult(string: qrCodeLink, type: .qr, image: qrcodeImg, corners: corners)
+            found(result)
         }
     }
 
